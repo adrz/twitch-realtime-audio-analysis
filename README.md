@@ -12,3 +12,10 @@ pip install -r requirements.txt
 source env/bin/activate
 python main --url https://www.twitch.tv/zombiunicorn
 ```
+
+# Docker
+
+```bash
+docker build -t alpine-custom:latest .
+docker run -it alpine-custom:latest python main --url https://www.twitch.tv/zombiunicorn
+```
