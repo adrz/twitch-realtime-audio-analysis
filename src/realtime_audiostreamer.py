@@ -17,18 +17,19 @@ curses_words = get_curses('src/curses.txt')
 
 class AudioStreamer:
     def __init__(self, twitch_url: str, sampling_rate: int=16000,
-                 window_size: int=20, deamon: bool=False):
+                 window_size: int=20, daemon: bool=True):
         """
         Args:
             twitch_url: url of the stream
             sampling_rate: sampling rate in Hz
             window_size: length each window to be analysed
-            deamon: True: blocking, False: continue
+            daemon: True: non blocking, False: blocking
         """
         self.twitch_url = twitch_url
         self.streamer_name = self.twitch_url.split("/")[3]
         self.sampling_rate = sampling_rate
         self.window_size = window_size
+        self.daemon = daemon
 
         stream_works = self.create_pipe()
 
@@ -61,7 +62,7 @@ class AudioStreamer:
 
     def start_buffer(self):
         t = Thread(target=self.update_buffer, args=())
-        t.daemon = self.deamon
+        t.daemon = self.daemon
         t.start()
         return self
 
