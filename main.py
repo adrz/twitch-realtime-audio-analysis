@@ -6,7 +6,7 @@ from src.realtime_audiostreamer import AudioStreamer
 @click.command()
 @click.option('--url', '-u', help='url of twitch stream')
 def main(url):
-    AudioStreamer(twitch_url=url)
+    AudioStreamer(twitch_url=url, blocking=True)
 
 if __name__ == '__main__':
     main()
