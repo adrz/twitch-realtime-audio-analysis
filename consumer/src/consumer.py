@@ -8,6 +8,8 @@ from pymongo import MongoClient
 import uuid
 import requests
 from .utils import extract_transcript, get_curses
+from concurrent.futures import ThreadPoolExecutor
+
 
 
 topic = os.environ.get('TOPIC') or 'twitch'
@@ -63,29 +65,16 @@ class Reader():
         try:
             if self.consumer:
                 try:
-                    for msg in self.consumer:
-                        headers = {
-                            'Content-Type': 'audio/x-flac; rate=16000;',
-                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7',
-                        }
-                        params = (
-                            ('client', 'chromium'),
-                            ('pFilter', '0'),
-                            ('lang', 'en'),
-                            ('key', 'AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw'),
-                        )
-                        response = requests.post('http://www.google.com/speech-api/v2/recognize',
-                                                 headers=headers, params=params, data=msg.value)
-                        transcript = extract_transcript(response.text)
-                        self.logger.info('{}: {}'.format(msg.key,
-                                                         transcript))
-                        # self.logger.info('{}: {}'.format(msg['streamer_name'],
-                        #                                  msg['transcript']))
-                        # self.logger.info(msg.value)
-                        # with open('audios/{}.txt'.format(uuid.uuid4()), 'w') as f:
-                        #     f.write(str(msg.value))
+                    with ThreadPoolExecutor(max_workers=20) as executor:
+                        for msg in self.consumer:
+                            executor.submit(self.api_speech, msg)
+                            # self.logger.info('{}: {}'.format(msg['streamer_name'],
+                            #                                  msg['transcript']))
+                            # self.logger.info(msg.value)
+                            # with open('audios/{}.txt'.format(uuid.uuid4()), 'w') as f:
+                            #     f.write(str(msg.value))
 
-                        # print(msg['streamer_name'])
+                            # print(msg['streamer_name'])
                 except StopIteration:
                     return None
             raise ConnectionException
@@ -99,5 +88,19 @@ class Reader():
         """ Deserializer function """
         return json.loads(x.decode('utf-8'))
 
-
-
+    def api_speech(self, msg):
+        headers = {
+            'Content-Type': 'audio/x-flac; rate=16000;',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7',
+        }
+        params = (
+            ('client', 'chromium'),
+            ('pFilter', '0'),
+            ('lang', 'en'),
+            ('key', 'AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw'),
+        )
+        response = requests.post('http://www.google.com/speech-api/v2/recognize',
+                                 headers=headers, params=params, data=msg.value)
+        transcript = extract_transcript(response.text)
+        self.logger.info('{}: {}'.format(msg.key, transcript))
+        return 

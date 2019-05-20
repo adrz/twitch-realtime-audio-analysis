@@ -44,9 +44,22 @@ services:
       - python
       - main.py
       - --url
-      - https://www.twitch.tv/esl_csgo
+      - https://www.twitch.tv/seriousgaming
       - --length
       - '10'
+    volumes:
+      - ./data/audios:/app/audios
+  producer:
+    image: producer
+    environment:
+      IP_KAFKA: kafka1
+      PORT_KAFKA: 19092
+      TOPIC: 'twitch'
+    build:
+      context: ./producer
+    entrypoint:
+      - python
+      - main_multiple.py
     volumes:
       - ./data/audios:/app/audios
 

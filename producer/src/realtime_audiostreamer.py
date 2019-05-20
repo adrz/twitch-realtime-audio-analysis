@@ -172,15 +172,14 @@ def test_async():
     async def main():
         async with aiohttp.ClientSession() as session:
             for i in range(n_sample):
-                # html = await fetch(session, 'http://www.monip.org/')
-                html = await fetch(session, 'http://www.mon-ip.com')
+                html = await fetch(session, 'http://www.monip.org/')
                 soup = BeautifulSoup(html)
-                print(soup)
-                if soup is not None:
-                    print(soup.find('span', {'id': 'ip4'}).text)
+                print(soup.find('font').text)
 
     loop = asyncio.get_event_loop()
     t = time.time()
+    main()
+    loop.run_forever()
     loop.run_until_complete(main())
     print(time.time()-t)
 
@@ -192,3 +191,46 @@ def test_async():
         print(soup.find('font').text)
 
     print(time.time()-t)
+
+
+    from requests_threads import AsyncSession
+    import time
+    session = AsyncSession(n=10)
+
+    async def _main():
+        for _ in range(20):
+            rs.append(await session.get('http://httpbin.org/get'))
+        print(rs)
+
+    session.run(_main())
+
+
+    from threading import Thread
+    import requests
+    import time
+    def get_request(url):
+        r = requests.get(url)
+        print(r.text)
+        return
+
+    # tt = time.time()
+    # threads = []
+    # for i in range(200):
+    #     t = Thread(target=get_request, args=())
+    #     t.daemon = True
+    #     t.start()
+    #     threads.append(t)
+
+    # [t.join() for t in threads]
+    # print(time.time()-tt)
+    from concurrent.futures import ThreadPoolExecutor
+    
+    tt = time.time()
+    url = 'http://httpbin.org/get'
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        for i in range(200):
+            if i%10 == 0:
+                time.sleep(3)
+            executor.submit(get_request, url)
+            # r = get_request()
+    print(time.time()-tt)
