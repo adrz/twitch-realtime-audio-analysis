@@ -13,3 +13,4 @@ six==1.12.0
 streamlink==1.1.1
 urllib3==1.25.2
 websocket-client==0.56.0
+kafka-python==1.4.6

@@ -110,24 +110,28 @@ class AudioStreamer:
             )
             t = time.time()
             data = raw_flac.read()
-            proxies = {
-                'http': 'rproxy:5566',
-                'https': 'rproxy:5566',
-            }
-            response = requests.post('http://www.google.com/speech-api/v2/recognize',
-                                     proxies=proxies,
-                                     headers=headers, params=params, data=data)
-            transcript = extract_transcript(response.text)
-            print('{}: {}'.format(self.streamer_name,
-                                  transcript))
-            logger.info('{}: {}'.format(self.streamer_name,
-                                         transcript))
-
-            if any_words_in_sentence(curses_words, transcript):
-                with open('curses/{}.flac'.format(uuid.uuid4()), 'wb') as f:
-                    f.write(data)
-                print('GOT a curse!!!!!!!!!!!!!!')
-                logger.info('GOT A CURSE!!')
+            # proxies = {
+            #     'http': 'rproxy:5566',
+            #     'https': 'rproxy:5566',
+            # }
+            proxies = None
+            # response = requests.post('http://www.google.com/speech-api/v2/recognize',
+            #                          proxies=proxies,
+            #                          headers=headers, params=params, data=data)
+            # transcript = extract_transcript(response.text)
+            # print('{}: {}'.format(self.streamer_name,
+            #                       transcript))
+            # logger.info('{}: {}'.format(self.streamer_name,
+            #                              transcript))
+            logger.info('publishing')
+            # message = {'streamer_name': self.streamer_name,
+            #            'transcript': transcript}
+            dispatcher.push(key=self.streamer_name, audio=data)
+            # if any_words_in_sentence(curses_words, transcript):
+            #     with open('audios/{}.flac'.format(uuid.uuid4()), 'wb') as f:
+            #         f.write(data)
+            #     # print('GOT a curse!!!!!!!!!!!!!!')
+            #     logger.info('GOT A CURSE!!')
             print(time.time()-t)
 
 

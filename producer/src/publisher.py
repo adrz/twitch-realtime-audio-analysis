@@ -5,7 +5,7 @@ import os
 import time
 import logging
 
-topic = os.environ.get('TOPIC') or 'stats'
+topic = os.environ.get('TOPIC') or 'twitch'
 IP_KAFKA = os.environ.get('IP_KAFKA')
 if IP_KAFKA == 'localhost':
     IP_KAFKA = 'kafka'
@@ -20,20 +20,21 @@ class Publisher:
 
         while not hasattr(self, 'producer'):
             try:
+                # self.producer = KafkaProducer(
+                #     bootstrap_servers=[f'{IP_KAFKA}:{PORT_KAFKA}'],
+                #     value_serializer=lambda x: json.dumps(x).encode('utf-8'))
                 self.producer = KafkaProducer(
-                    bootstrap_servers=[f'{IP_KAFKA}:{PORT_KAFKA}'],
-                    value_serializer=lambda x: json.dumps(x).encode('utf-8'))
+                    bootstrap_servers=[f'{IP_KAFKA}:{PORT_KAFKA}'])
             except NoBrokersAvailable as err:
                 self.logger.error("Unable to find a broker: {0}".format(err))
                 time.sleep(1)
 
-    def push(self, message):
-        self.logger.debug("Publishing: {0}".format(message))
+    def push(self, key, audio):
+        self.logger.debug("Publishing: {0}".format(key))
         try:
             if self.producer:
-                self.producer.send('stats', value=message)
+                self.producer.send(topic, key=key.encode('utf-8'), value=audio)
                 self.producer.flush()
         except AttributeError:
-            self.logger.error("Unable to send {0}. The producer does not exist.".format(message))
+            self.logger.error("Unable to send {0}. The producer does not exist.".format(key))
         return None
-

@@ -10,4 +10,4 @@ COPY src src
 
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt && \
-    mkdir curses
+    mkdir audios
