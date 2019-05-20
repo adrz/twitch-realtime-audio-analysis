@@ -12,7 +12,7 @@ import logging
 import streamlink
 from pydub import AudioSegment
 from .utils import any_words_in_sentence, extract_transcript, get_curses
-from .publisher import Publisher
+# from .publisher import Publisher
 
 curses_words = get_curses('src/curses.txt')
 
@@ -21,7 +21,7 @@ logger.setLevel(logging.INFO)
 if len(logger.handlers) == 0:
     logger.addHandler(logging.StreamHandler())
 
-dispatcher = Publisher()
+# dispatcher = Publisher()
 
 class AudioStreamer:
     def __init__(self, twitch_url: str, sampling_rate: int=16000,
@@ -110,23 +110,24 @@ class AudioStreamer:
             )
             t = time.time()
             data = raw_flac.read()
-            proxies = {
-                'http': 'rproxy:5566',
-                'https': 'rproxy:5566',
-            }
+            # proxies = {
+            #     'http': 'rproxy:5566',
+            #     'https': 'rproxy:5566',
+            # }
+            proxies = None
             response = requests.post('http://www.google.com/speech-api/v2/recognize',
                                      proxies=proxies,
                                      headers=headers, params=params, data=data)
             transcript = extract_transcript(response.text)
-            print('{}: {}'.format(self.streamer_name,
-                                  transcript))
+            # print('{}: {}'.format(self.streamer_name,
+            #                       transcript))
             logger.info('{}: {}'.format(self.streamer_name,
                                          transcript))
 
             if any_words_in_sentence(curses_words, transcript):
                 with open('curses/{}.flac'.format(uuid.uuid4()), 'wb') as f:
                     f.write(data)
-                print('GOT a curse!!!!!!!!!!!!!!')
+                # print('GOT a curse!!!!!!!!!!!!!!')
                 logger.info('GOT A CURSE!!')
             print(time.time()-t)
 
