@@ -12,16 +12,15 @@ import logging
 import streamlink
 from pydub import AudioSegment
 from .utils import any_words_in_sentence, extract_transcript, get_curses
+from pydub.exceptions import CouldntEncodeError
 from .publisher import Publisher
 
-curses_words = get_curses('src/curses.txt')
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 if len(logger.handlers) == 0:
     logger.addHandler(logging.StreamHandler())
 
-dispatcher = Publisher()
 
 class AudioStreamer:
     def __init__(self, twitch_url: str, sampling_rate: int=16000,
@@ -39,25 +38,29 @@ class AudioStreamer:
         self.window_size = window_size
         self.daemon = daemon
         self.is_running = True
+        self.dispatcher = Publisher()
 
         stream_works = self.create_pipe()
 
         if stream_works:
             self.start_buffer()
 
-    def stop(self):
+    def _stop(self):
         self.is_running = False
 
     def create_pipe(self):
         try:
             streams = streamlink.streams(self.twitch_url)
         except streamlink.exceptions.NoPluginError:
-            print("No stream availabe for " + self.streamer_name)
+            logger.info("No stream availabe for " + self.streamer_name)
             return False
         except:
-            print("No stream available no exception " + self.streamer_name)
+            logger.info("No stream available no exception " + self.streamer_name)
             return False
 
+        if 'audio_only' not in streams:
+            logger.info("No audio stream available " + self.streamer_name)
+            return
         stream = streams['audio_only']
         self.stream_url = stream.url
 
@@ -73,66 +76,40 @@ class AudioStreamer:
         return True
 
     def start_buffer(self):
+        logger.info("starting stream: {}".format(self.streamer_name))
         self.t = Thread(target=self.update_buffer, args=())
         self.t.daemon = self.daemon
         self.t.start()
-        logger.debug("starting stream")
         return self
 
     def update_buffer(self):
         while True:
             if not self.is_running:
                 return
-            raw_audio = self.pipe.stdout.read(self.sampling_rate*2*self.window_size)
+            try:
+                raw_audio = self.pipe.stdout.read(self.sampling_rate*2*self.window_size)
+            except:
+                logger.error('ERROR pipe')
             # each frame is 2 bytes (16 bits)
             # so sampling_rate*2 is the number of sample for 1 second
 
             if len(raw_audio) == 0:
-                break
+                logger.info('empty stream for {}'.format(self.streamer_name))
 
             # Convert raw audio (wav format) into flac (required by google api)
             raw = BytesIO(raw_audio)
-            raw_wav = AudioSegment.from_raw(
-                raw, sample_width=2, frame_rate=16000, channels=1)
+            logger.info('new sample from {}'.format(self.streamer_name))
+            try:
+                raw_wav = AudioSegment.from_raw(
+                    raw, sample_width=2, frame_rate=16000, channels=1)
+            except CouldntEncodeError:
+                logger.info('Could not encode: {}'.format(self.streamer_name))
+                continue
             raw_flac = BytesIO()
             raw_wav.export(raw_flac, format='flac')
-
-            # Call google API
-            headers = {
-                'Content-Type': 'audio/x-flac; rate=16000;',
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7',
-            }
-            params = (
-                ('client', 'chromium'),
-                ('pFilter', '0'),
-                ('lang', 'en'),
-                ('key', 'AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw'),
-            )
             t = time.time()
             data = raw_flac.read()
-            # proxies = {
-            #     'http': 'rproxy:5566',
-            #     'https': 'rproxy:5566',
-            # }
-            proxies = None
-            # response = requests.post('http://www.google.com/speech-api/v2/recognize',
-            #                          proxies=proxies,
-            #                          headers=headers, params=params, data=data)
-            # transcript = extract_transcript(response.text)
-            # print('{}: {}'.format(self.streamer_name,
-            #                       transcript))
-            # logger.info('{}: {}'.format(self.streamer_name,
-            #                              transcript))
-            logger.info('publishing')
-            # message = {'streamer_name': self.streamer_name,
-            #            'transcript': transcript}
-            dispatcher.push(key=self.streamer_name, audio=data)
-            # if any_words_in_sentence(curses_words, transcript):
-            #     with open('audios/{}.flac'.format(uuid.uuid4()), 'wb') as f:
-            #         f.write(data)
-            #     # print('GOT a curse!!!!!!!!!!!!!!')
-            #     logger.info('GOT A CURSE!!')
-            print(time.time()-t)
+            self.dispatcher.push(key=self.streamer_name, audio=data)
 
 
 def test():

@@ -7,9 +7,8 @@ import time
 from pymongo import MongoClient
 import uuid
 import requests
-from .utils import extract_transcript, get_curses
+from .utils import extract_transcript, get_curses, any_words_in_sentence
 from concurrent.futures import ThreadPoolExecutor
-
 
 
 topic = os.environ.get('TOPIC') or 'twitch'
@@ -20,7 +19,9 @@ PORT_KAFKA = os.environ.get('PORT_KAFKA')
 MONGODB_HOST = os.environ.get('MONGODB_HOST')
 MONGODB_DB = os.environ.get('MONGODB_DB')
 MONGODB_COLLECTION = os.environ.get('MONGODB_COLLECTION')
+PROXY = os.environ.get('PROXY')
 
+curses_words = get_curses('src/curses.txt')
 
 class ConnectionException(Exception):
     pass
@@ -39,13 +40,6 @@ class Reader():
             self.logger.info("Getting the kafka consumer")
             try:
                 print(f'trying to connect to {IP_KAFKA}:{PORT_KAFKA}')
-                # self.consumer = KafkaConsumer(
-                #     topic,
-                #     bootstrap_servers=f'{IP_KAFKA}:{PORT_KAFKA}',
-                #     auto_offset_reset='earliest',
-                #     group_id='consumer',
-                #     enable_auto_commit=True,
-                #     value_deserializer=lambda x: self._deserializer(x))
                 self.consumer = KafkaConsumer(
                     topic,
                     bootstrap_servers=f'{IP_KAFKA}:{PORT_KAFKA}',
@@ -68,13 +62,6 @@ class Reader():
                     with ThreadPoolExecutor(max_workers=20) as executor:
                         for msg in self.consumer:
                             executor.submit(self.api_speech, msg)
-                            # self.logger.info('{}: {}'.format(msg['streamer_name'],
-                            #                                  msg['transcript']))
-                            # self.logger.info(msg.value)
-                            # with open('audios/{}.txt'.format(uuid.uuid4()), 'w') as f:
-                            #     f.write(str(msg.value))
-
-                            # print(msg['streamer_name'])
                 except StopIteration:
                     return None
             raise ConnectionException
@@ -99,8 +86,35 @@ class Reader():
             ('lang', 'en'),
             ('key', 'AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw'),
         )
+        proxies = {'http': PROXY,
+                   'https': PROXY}
+        proxies = None
         response = requests.post('http://www.google.com/speech-api/v2/recognize',
+                                 # proxies=proxies,
                                  headers=headers, params=params, data=msg.value)
         transcript = extract_transcript(response.text)
         self.logger.info('{}: {}'.format(msg.key, transcript))
+        filename = 'audios/{}.flac'.format(uuid.uuid4())
+        has_curse = any_words_in_sentence(curses_words, transcript)
+
+        if has_curse:
+            with open(filename, 'wb') as f:
+                f.write(data)
+            self.logger.info('GOT A CURSE!!')
+        self.logger.info('{}: {}'.format(msg.key, 'passing has_curse'))
+        if transcript is not None:
+            dict_mongo = {'timestamp': msg.timestamp,
+                          'transcript': transcript,
+                          'streamer_name': msg.key.decode('utf-8'),
+                          'filename': filename if has_curse else None}
+            self.logger.info('{}'.format(dict_mongo))
+            try:
+                with MongoClient(MONGODB_HOST) as client:
+                    db = client[MONGODB_DB]
+                    collection = db[MONGODB_COLLECTION]
+                    collection.insert_one(dict_mongo)
+            except Exception as inst:
+                self.logger.info(inst)
+            finally:
+                self.logger.info('success mongo')
         return 

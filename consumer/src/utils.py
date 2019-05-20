@@ -15,7 +15,7 @@ def get_curses(filename: str='curses.txt'):
 
 def any_words_in_sentence(words: list, sentence: list):
     if sentence is None:
-        return None
+        return False
     def word_in_sentence(word, sentence):
         return word in sentence
     sentence = sentence.lower()

@@ -42,34 +42,22 @@ services:
       context: ./producer
     entrypoint:
       - python
-      - main.py
-      - --url
-      - https://www.twitch.tv/seriousgaming
-      - --length
-      - '10'
-    volumes:
-      - ./data/audios:/app/audios
-  producer:
-    image: producer
-    environment:
-      IP_KAFKA: kafka1
-      PORT_KAFKA: 19092
-      TOPIC: 'twitch'
-    build:
-      context: ./producer
-    entrypoint:
-      - python
       - main_multiple.py
     volumes:
       - ./data/audios:/app/audios
+    depends_on:
+      - kafka1
 
   consumer:
     image: consumer
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
-      TOPIC: 'twitch'
-      PROXY: 127.0.0.1:5566
+      TOPIC: twitch
+      PROXY: rproxy:5566
+      MONGODB_HOST: mongo:27017
+      MONGODB_DB: twitch
+      MONGODB_COLLECTION: speech2text
     build:
       context: ./consumer
     volumes:
@@ -77,6 +65,11 @@ services:
     entrypoint:
       - python
       - main.py
+    # depends_on:
+    #   - kafka1
+    #   - producer
+    #   - mongo
+    #   - rproxy
 
   # rproxy:
   #   hostname: rproxy
@@ -87,11 +80,12 @@ services:
   #     - "5566:5566"
   #     - "4444:4444"
 
-  # mongo:
-  #   hostname: mongo
-  #   image: mongo
-  #   ports:
-  #     - "27017:27017"
-  #   volumes:
-  #     - ./data/mongo:/data/db
-  
+  mongo:
+    hostname: mongo
+    image: mongo
+    logging:
+      driver: none
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./data/mongo:/data/db
