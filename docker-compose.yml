@@ -89,4 +89,4 @@ services:
     depends_on:
       - kafka1
       - mongo
-      - rproxy
+      # - rproxy

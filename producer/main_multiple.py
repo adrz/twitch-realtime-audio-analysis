@@ -19,7 +19,7 @@ if __name__ == '__main__':
         logger.addHandler(logging.StreamHandler())
 
     streams_list = (streams.Streams(client_id='fqsudq063tmmzfbypb3d9xophrk3jk')
-                    .get_live_streams(limit=10, language='en'))
+                    .get_live_streams(limit=3, language='en'))
     for stream in streams_list:
         print('{}: {}'.format(stream.channel.url,
                               stream.viewers))
