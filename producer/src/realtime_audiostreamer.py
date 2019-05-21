@@ -2,16 +2,13 @@
 
 import subprocess as sp
 import time
-import uuid
 from io import BytesIO
 from threading import Thread
 
-import requests
 import logging
 
 import streamlink
 from pydub import AudioSegment
-from .utils import any_words_in_sentence, extract_transcript, get_curses
 from pydub.exceptions import CouldntEncodeError
 from .publisher import Publisher
 
@@ -50,6 +47,11 @@ class AudioStreamer:
         self.is_running = False
 
     def create_pipe(self):
+        """
+        Retrieve audio streams from the given twitch_url
+        Launch ffmpeg to decode the audio stream as raw wave file and pipe it to
+        a temporary buffer
+        """
         try:
             streams = streamlink.streams(self.twitch_url)
         except streamlink.exceptions.NoPluginError:
@@ -77,6 +79,9 @@ class AudioStreamer:
         return True
 
     def start_buffer(self):
+        """
+        Start a thread that will read the pipe
+        """
         logger.info("starting stream: {}".format(self.streamer_name))
         self.t = Thread(target=self.update_buffer, args=())
         self.t.daemon = self.daemon
@@ -89,11 +94,14 @@ class AudioStreamer:
                 return
             try:
                 raw_audio = self.pipe.stdout.read(self.sampling_rate*2*self.window_size)
+                # each frame is 2 bytes (16 bits)
+                # so sampling_rate*2 is the number of sample for 1 second
+
             except:
                 logger.error('ERROR pipe')
-            # each frame is 2 bytes (16 bits)
-            # so sampling_rate*2 is the number of sample for 1 second
+                continue
 
+            # Check if the stream is empty (often the case when a stream has ended)
             if len(raw_audio) == 0:
                 logger.info('empty stream for {}'.format(self.streamer_name))
                 self.count_empty += 1
@@ -103,7 +111,6 @@ class AudioStreamer:
 
             # Convert raw audio (wav format) into flac (required by google api)
             raw = BytesIO(raw_audio)
-            # logger.info('new sample from {}'.format(self.streamer_name))
             try:
                 raw_wav = AudioSegment.from_raw(
                     raw, sample_width=2, frame_rate=16000, channels=1)
@@ -115,104 +122,3 @@ class AudioStreamer:
             t = time.time()
             data = raw_flac.read()
             self.dispatcher.push(key=self.streamer_name, audio=data)
-
-
-def test():
-    from src.realtime_audiostreamer import AudioStreamer
-    from twitch.api import streams
-
-    streams = (streams.Streams(client_id='fqsudq063tmmzfbypb3d9xophrk3jk')
-               .get_live_streams(limit=50))
-    for stream in streams:
-        print('{}: {}'.format(stream.channel.url,
-                              stream.viewers))
-
-    audios = []
-    for stream in streams:
-        audios.append(AudioStreamer(twitch_url=stream.channel.url))
-
-    # v = AudioStreamer(twitch_url=streams[0].channel.url)
-    # AudioStreamer(twitch_url='https://www.twitch.tv/greekgodx')
-    # AudioStreamer(twitch_url='https://www.twitch.tv/pimpcsgo')
-    # AudioStreamer(twitch_url='https://www.twitch.tv/zombiunicorn')
-    # AudioStreamer(twitch_url='https://www.twitch.tv/pokket')
-    # AudioStreamer(twitch_url='https://www.twitch.tv/m0xyy')
-
-
-def test_async():
-    import aiohttp
-    import asyncio
-    from bs4 import BeautifulSoup
-    import requests
-    n_sample = 20
-
-    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7'}
-    async def fetch(session, url):
-        async with session.get(url, proxy='http://127.0.0.1:5566', headers=headers) as response:
-            return await response.text()
-
-    async def main():
-        async with aiohttp.ClientSession() as session:
-            for i in range(n_sample):
-                html = await fetch(session, 'http://www.monip.org/')
-                soup = BeautifulSoup(html)
-                print(soup.find('font').text)
-
-    loop = asyncio.get_event_loop()
-    t = time.time()
-    main()
-    loop.run_forever()
-    loop.run_until_complete(main())
-    print(time.time()-t)
-
-    t = time.time()
-    for i in range(n_sample):
-        r = requests.get('http://www.monip.org/',
-                         proxies={'http': '127.0.0.1:5566'})
-        soup = BeautifulSoup(r.text)
-        print(soup.find('font').text)
-
-    print(time.time()-t)
-
-
-    from requests_threads import AsyncSession
-    import time
-    session = AsyncSession(n=10)
-
-    async def _main():
-        for _ in range(20):
-            rs.append(await session.get('http://httpbin.org/get'))
-        print(rs)
-
-    session.run(_main())
-
-
-    from threading import Thread
-    import requests
-    import time
-    def get_request(url):
-        r = requests.get(url)
-        print(r.text)
-        return
-
-    # tt = time.time()
-    # threads = []
-    # for i in range(200):
-    #     t = Thread(target=get_request, args=())
-    #     t.daemon = True
-    #     t.start()
-    #     threads.append(t)
-
-    # [t.join() for t in threads]
-    # print(time.time()-tt)
-    from concurrent.futures import ThreadPoolExecutor
-    
-    tt = time.time()
-    url = 'http://httpbin.org/get'
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        for i in range(200):
-            if i%10 == 0:
-                time.sleep(3)
-            executor.submit(get_request, url)
-            # r = get_request()
-    print(time.time()-tt)
