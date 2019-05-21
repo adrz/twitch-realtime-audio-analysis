@@ -38,6 +38,7 @@ class AudioStreamer:
         self.window_size = window_size
         self.daemon = daemon
         self.is_running = True
+        self.count_empty = 0
         self.dispatcher = Publisher()
 
         stream_works = self.create_pipe()
@@ -95,10 +96,14 @@ class AudioStreamer:
 
             if len(raw_audio) == 0:
                 logger.info('empty stream for {}'.format(self.streamer_name))
+                self.count_empty += 1
+                if self.count_empty > 10:
+                    self.is_running = False
+                continue
 
             # Convert raw audio (wav format) into flac (required by google api)
             raw = BytesIO(raw_audio)
-            logger.info('new sample from {}'.format(self.streamer_name))
+            # logger.info('new sample from {}'.format(self.streamer_name))
             try:
                 raw_wav = AudioSegment.from_raw(
                     raw, sample_width=2, frame_rate=16000, channels=1)

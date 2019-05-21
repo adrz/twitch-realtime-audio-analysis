@@ -32,6 +32,25 @@ services:
     depends_on:
       - zoo1
 
+  rproxy:
+    hostname: rproxy
+    image: mattes/rotating-proxy
+    environment:
+      - tors=25
+    ports:
+      - "5566:5566"
+      - "4444:4444"
+
+  mongo:
+    hostname: mongo
+    image: mongo
+    logging:
+      driver: none
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./data/mongo:/data/db
+
   producer:
     image: producer
     environment:
@@ -61,31 +80,13 @@ services:
     build:
       context: ./consumer
     volumes:
-      - ./data/audios:/app/audios
+      - ./data/audios/curses:/app/audios/curses
+      - ./data/audios/voice:/app/audios/voice
+      - ./data/audios/novoice:/app/audios/novoice
     entrypoint:
       - python
       - main.py
-    # depends_on:
-    #   - kafka1
-    #   - producer
-    #   - mongo
-    #   - rproxy
-
-  # rproxy:
-  #   hostname: rproxy
-  #   image: anuragrana/rotating-proxy
-  #   environment:
-  #     - tors=25
-  #   ports:
-  #     - "5566:5566"
-  #     - "4444:4444"
-
-  mongo:
-    hostname: mongo
-    image: mongo
-    logging:
-      driver: none
-    ports:
-      - "27018:27017"
-    volumes:
-      - ./data/mongo:/data/db
+    depends_on:
+      - kafka1
+      - mongo
+      - rproxy

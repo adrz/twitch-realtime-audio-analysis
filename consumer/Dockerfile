@@ -6,4 +6,6 @@ COPY src src
 
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt && \
-    mkdir audios
+    mkdir audios && \
+    mkdir audios/voice && \
+    mkdir audios/novoice

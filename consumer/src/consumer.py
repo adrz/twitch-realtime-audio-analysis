@@ -9,6 +9,7 @@ import uuid
 import requests
 from .utils import extract_transcript, get_curses, any_words_in_sentence
 from concurrent.futures import ThreadPoolExecutor
+import random
 
 
 topic = os.environ.get('TOPIC') or 'twitch'
@@ -26,6 +27,7 @@ curses_words = get_curses('src/curses.txt')
 class ConnectionException(Exception):
     pass
 
+logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
 class Reader():
     def __init__(self):
@@ -59,9 +61,14 @@ class Reader():
         try:
             if self.consumer:
                 try:
-                    with ThreadPoolExecutor(max_workers=20) as executor:
-                        for msg in self.consumer:
-                            executor.submit(self.api_speech, msg)
+                    # with ThreadPoolExecutor(max_workers=10) as executor:
+                    #     for msg in self.consumer:
+                    #         executor.submit(self.api_speech, msg)
+                    for msg in self.consumer:
+                        try:
+                            self.api_speech(msg)
+                        except Exception as inst:
+                            self.logger.error('ERROR api_speech', exc_info=True)
                 except StopIteration:
                     return None
             raise ConnectionException
@@ -86,22 +93,50 @@ class Reader():
             ('lang', 'en'),
             ('key', 'AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw'),
         )
+        data = msg.value
         proxies = {'http': PROXY,
                    'https': PROXY}
-        proxies = None
-        response = requests.post('http://www.google.com/speech-api/v2/recognize',
-                                 # proxies=proxies,
-                                 headers=headers, params=params, data=msg.value)
+        # proxies = None
+        if len(data) == 0:
+            return
+        try:
+            response = requests.post('http://www.google.com/speech-api/v2/recognize',
+                                     proxies=proxies,
+                                     headers=headers, params=params, data=data)
+            self.logger.info('here we are: {}'.format(response.text))
+        except Exception as inst:
+            self.logger.error('ERROR requests', exc_info=True)
+
         transcript = extract_transcript(response.text)
         self.logger.info('{}: {}'.format(msg.key, transcript))
-        filename = 'audios/{}.flac'.format(uuid.uuid4())
+        filename = 'audios/curses/{}.flac'.format(uuid.uuid4())
         has_curse = any_words_in_sentence(curses_words, transcript)
 
         if has_curse:
-            with open(filename, 'wb') as f:
-                f.write(data)
-            self.logger.info('GOT A CURSE!!')
-        self.logger.info('{}: {}'.format(msg.key, 'passing has_curse'))
+            try:
+                with open(filename, 'wb') as f:
+                    f.write(data)
+            except Exception as inst:
+                self.logger.error('ERROR: {}'.format(inst))
+            finally:
+                self.logger.info('Curse saved')
+        if random.random() < .03:
+            self.logger.info('saving')
+            if transcript is not None:
+                filename_detect_sound = 'audios/voice/{}.flac'.format(uuid.uuid4())
+                try:
+                    with open(filename_detect_sound, 'wb') as f:
+                        f.write(data)
+                except Exception as inst:
+                    self.logger.error('ERROR random', exc_info=True)
+            else:
+                filename_detect_sound = 'audios/novoice/{}.flac'.format(uuid.uuid4())
+                try:
+                    with open(filename_detect_sound, 'wb') as f:
+                        f.write(data)
+                except Exception as inst:
+                    self.logger.error('ERROR random', exc_info=True)
+
         if transcript is not None:
             dict_mongo = {'timestamp': msg.timestamp,
                           'transcript': transcript,
@@ -114,7 +149,7 @@ class Reader():
                     collection = db[MONGODB_COLLECTION]
                     collection.insert_one(dict_mongo)
             except Exception as inst:
-                self.logger.info(inst)
+                self.logger.error('ERROR mongo', exc_info=True)
             finally:
                 self.logger.info('success mongo')
         return 
