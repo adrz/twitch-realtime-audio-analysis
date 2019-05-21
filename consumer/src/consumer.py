@@ -11,6 +11,7 @@ from .utils import extract_transcript, get_curses, any_words_in_sentence
 from concurrent.futures import ThreadPoolExecutor
 import random
 import datetime
+from fake_useragent import UserAgent
 
 
 topic = os.environ.get('TOPIC') or 'twitch'
@@ -22,6 +23,7 @@ MONGODB_HOST = os.environ.get('MONGODB_HOST')
 MONGODB_DB = os.environ.get('MONGODB_DB')
 MONGODB_COLLECTION = os.environ.get('MONGODB_COLLECTION')
 PROXY = os.environ.get('PROXY')
+N_THREADS = int(os.environ.get('N_THREADS'))
 
 curses_words = get_curses('src/curses.txt')
 
@@ -35,6 +37,7 @@ class Reader():
         self.logger = logging.getLogger()
         self.logger.info("Initializing the consumer")
         self.logger.setLevel(logging.INFO)
+        self.ua = UserAgent()
         if len(self.logger.handlers) == 0:
             self.logger.addHandler(logging.StreamHandler())
         # self.client = MongoClient(MONGODB_HOST)
@@ -62,7 +65,7 @@ class Reader():
         try:
             if self.consumer:
                 try:
-                    with ThreadPoolExecutor(max_workers=5) as executor:
+                    with ThreadPoolExecutor(max_workers=N_THREADS) as executor:
                         for msg in self.consumer:
                             executor.submit(self.api_speech, msg)
                     # for msg in self.consumer:
@@ -84,9 +87,13 @@ class Reader():
         return json.loads(x.decode('utf-8'))
 
     def api_speech(self, msg):
+        # headers = {
+        #     'Content-Type': 'audio/x-flac; rate=16000;',
+        #     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7',
+        # }
         headers = {
             'Content-Type': 'audio/x-flac; rate=16000;',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7',
+            'User-Agent': self.ua['google chrome'],
         }
         params = (
             ('client', 'chromium'),

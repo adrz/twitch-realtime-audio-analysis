@@ -25,7 +25,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
       KAFKA_BROKER_ID: 1
-      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=WARN,kafka.producer.async.DefaultEventHandler=WARN,state.change.logger=WARN"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     volumes:
       - ./data/kafka1/data:/var/lib/kafka/data
@@ -37,6 +37,8 @@ services:
     image: mattes/rotating-proxy
     environment:
       - tors=25
+    logging:
+      driver: none
     ports:
       - "5566:5566"
       - "4444:4444"
@@ -77,6 +79,7 @@ services:
       MONGODB_HOST: mongo:27017
       MONGODB_DB: twitch
       MONGODB_COLLECTION: speech2text
+      N_THREADS: 10
     build:
       context: ./consumer
     volumes:
