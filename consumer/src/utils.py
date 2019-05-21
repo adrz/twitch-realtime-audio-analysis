@@ -27,6 +27,8 @@ def extract_transcript(resp: str):
     """
     Extract the first results from google api speech recognition
     """
+    if 'result' not in resp:
+        raise ValueError({'Error non valid response from api: {}'.format(resp)})
     for line in resp.split("\n"):
         try:
             line = json.loads(line)

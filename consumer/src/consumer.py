@@ -10,6 +10,7 @@ import requests
 from .utils import extract_transcript, get_curses, any_words_in_sentence
 from concurrent.futures import ThreadPoolExecutor
 import random
+import datetime
 
 
 topic = os.environ.get('TOPIC') or 'twitch'
@@ -61,14 +62,14 @@ class Reader():
         try:
             if self.consumer:
                 try:
-                    # with ThreadPoolExecutor(max_workers=10) as executor:
-                    #     for msg in self.consumer:
-                    #         executor.submit(self.api_speech, msg)
-                    for msg in self.consumer:
-                        try:
-                            self.api_speech(msg)
-                        except Exception as inst:
-                            self.logger.error('ERROR api_speech', exc_info=True)
+                    with ThreadPoolExecutor(max_workers=5) as executor:
+                        for msg in self.consumer:
+                            executor.submit(self.api_speech, msg)
+                    # for msg in self.consumer:
+                    #     try:
+                    #         self.api_speech(msg)
+                    #     except Exception as inst:
+                    #         self.logger.error('ERROR api_speech', exc_info=True)
                 except StopIteration:
                     return None
             raise ConnectionException
@@ -103,12 +104,18 @@ class Reader():
             response = requests.post('http://www.google.com/speech-api/v2/recognize',
                                      proxies=proxies,
                                      headers=headers, params=params, data=data)
-            self.logger.info('here we are: {}'.format(response.text))
         except Exception as inst:
             self.logger.error('ERROR requests', exc_info=True)
 
-        transcript = extract_transcript(response.text)
-        self.logger.info('{}: {}'.format(msg.key, transcript))
+        try:
+            transcript = extract_transcript(response.text)
+        except Exception as inst:
+            self.logger.error('ERROR transcript', exc_info=True)
+            return
+
+        date = datetime.datetime.fromtimestamp(int(msg.timestamp)//1000)
+        self.logger.info('{}, {}: {}'.format(date.strftime('%Y-%m-%dT%H:%M:%S'),
+                                                 msg.key, transcript))
         filename = 'audios/curses/{}.flac'.format(uuid.uuid4())
         has_curse = any_words_in_sentence(curses_words, transcript)
 
@@ -121,7 +128,6 @@ class Reader():
             finally:
                 self.logger.info('Curse saved')
         if random.random() < .03:
-            self.logger.info('saving')
             if transcript is not None:
                 filename_detect_sound = 'audios/voice/{}.flac'.format(uuid.uuid4())
                 try:
@@ -142,7 +148,6 @@ class Reader():
                           'transcript': transcript,
                           'streamer_name': msg.key.decode('utf-8'),
                           'filename': filename if has_curse else None}
-            self.logger.info('{}'.format(dict_mongo))
             try:
                 with MongoClient(MONGODB_HOST) as client:
                     db = client[MONGODB_DB]
@@ -150,6 +155,4 @@ class Reader():
                     collection.insert_one(dict_mongo)
             except Exception as inst:
                 self.logger.error('ERROR mongo', exc_info=True)
-            finally:
-                self.logger.info('success mongo')
         return 
