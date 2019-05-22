@@ -75,7 +75,7 @@ class Reader():
         Each message create a thread (to be processed asynchronously) up to N_THREADS
         """
 
-        self.logger.info("Reading stream: {0}".format(topic))
+        self.logger.info("Reading stream: {0}".format(TOPIC))
         try:
             if self.consumer:
                 try:
