@@ -1,5 +1,5 @@
 from flask import Flask
-from src.flask_blueprints import streams
+from src.flask.blueprints import streams
 
 app = Flask(__name__)
 app.register_blueprint(streams.blueprint)
