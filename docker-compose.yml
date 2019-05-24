@@ -59,14 +59,17 @@ services:
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
-      TOPIC: twitch
+      TOPIC: 'twitch'
+    ports:
+      - "8080:5000"
     build:
       context: ./producer
     entrypoint:
       - python
-      - main_multiple.py
+      - app.py
     volumes:
       - ./data/audios:/app/audios
+      - ./producer:/app
     depends_on:
       - kafka1
 

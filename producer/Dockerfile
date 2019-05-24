@@ -5,9 +5,11 @@ RUN apk upgrade -U \
  && rm -rf /var/cache/*
 
 WORKDIR /app
-COPY requirements.txt main.py main_multiple.py ./
+COPY requirements.txt main.py main_multiple.py app.py ./
 COPY src src
 
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt && \
     mkdir audios
+
+EXPOSE 5000
