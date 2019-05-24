@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 
+import logging
+import os
+import signal
 import subprocess as sp
 import time
 from io import BytesIO
 from threading import Thread
 
-import logging
-
 import streamlink
 from pydub import AudioSegment
 from pydub.exceptions import CouldntEncodeError
-from .publisher import Publisher
 
+from .publisher import Publisher
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -43,7 +44,7 @@ class AudioStreamer:
         if stream_works:
             self.start_buffer()
 
-    def _stop(self):
+    def stop(self):
         self.is_running = False
 
     def create_pipe(self):
@@ -91,6 +92,8 @@ class AudioStreamer:
     def update_buffer(self):
         while True:
             if not self.is_running:
+                self.pipe.terminate()
+                self.pipe.communicate()
                 return
             try:
                 raw_audio = self.pipe.stdout.read(self.sampling_rate*2*self.window_size)
