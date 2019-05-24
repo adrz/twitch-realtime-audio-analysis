@@ -1,25 +1,23 @@
+# -*- coding: utf-8 -*-
+
+
+import logging
+import time
+
 from src.realtime_audiostreamer import AudioStreamer
 from twitch.api import streams
-import time
-import logging
 
 
 if __name__ == '__main__':
-    # s = []
-    # for i in range(20):
-    #     streams_list = (streams.Streams(client_id='fqsudq063tmmzfbypb3d9xophrk3jk')
-    #                     .get_live_streams(limit=100, language='en', offset=100*i))
-    #     s.append(streams_list)
-    # for stream in streams_list:
-    #     print('{}: {}'.format(stream.channel.url,
-    #                           stream.viewers))
     logger = logging.getLogger()
-    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.INFO)
     if len(logger.handlers) == 0:
         logger.addHandler(logging.StreamHandler())
-
+    logger.info('sleeping for 5 minutes before launching')
+    time.sleep(4*1)
+    logger.info('end of sleep')
     streams_list = (streams.Streams(client_id='fqsudq063tmmzfbypb3d9xophrk3jk')
-                    .get_live_streams(limit=3, language='en'))
+                    .get_live_streams(limit=50, language='en'))
     for stream in streams_list:
         print('{}: {}'.format(stream.channel.url,
                               stream.viewers))
@@ -63,4 +61,3 @@ if __name__ == '__main__':
     #               window_size=10, daemon=False)
     # AudioStreamer(twitch_url='https://www.twitch.tv/sttasha',
     #               window_size=10, daemon=False)
-    

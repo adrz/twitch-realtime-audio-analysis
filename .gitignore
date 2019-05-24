@@ -1,0 +1,6 @@
+# container volume space
+data/
+
+*/venv
+
+*/.vscode
