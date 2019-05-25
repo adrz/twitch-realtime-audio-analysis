@@ -25,7 +25,6 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
       KAFKA_BROKER_ID: 1
-      KAFKA_NUM_PARTITIONS: 6
       KAFKA_LOG4J_LOGGERS: "kafka.controller=WARN,kafka.producer.async.DefaultEventHandler=WARN,state.change.logger=WARN"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     volumes:
@@ -59,9 +58,8 @@ services:
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
-      TOPIC: 'twitch'
-    ports:
-      - "8080:5000"
+      TOPIC: twitch
+      TOPIC_SUB: streams
     build:
       context: ./producer
     entrypoint:
@@ -70,6 +68,22 @@ services:
     volumes:
       - ./data/audios:/app/audios
       - ./producer:/app
+    depends_on:
+      - kafka1
+
+  orchestrator:
+    image: orchestrator
+    environment:
+      IP_KAFKA: kafka1
+      PORT_KAFKA: 19092
+      TOPIC_SUB: streams
+    ports:
+      - "8080:5000"
+    build:
+      context: ./producers_orchestrator
+    entrypoint:
+      - python
+      - app.py
     depends_on:
       - kafka1
 
