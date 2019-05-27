@@ -3,9 +3,11 @@
 from flask import Blueprint
 from flask import jsonify
 from .orchestrator import ProducersOrchestrator
+from flask_cors import CORS
 
 
 api_blueprint = Blueprint('streams', __name__)
+CORS(api_blueprint)
 orchestrator = ProducersOrchestrator()
 
 
