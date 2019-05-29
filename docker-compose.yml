@@ -1,4 +1,4 @@
-version: '2.1'
+version: '3'
 
 services:
   zoo1:
@@ -13,6 +13,8 @@ services:
     volumes:
       - ./data/zoo1/data:/data
       - ./data/zoo1/datalog:/datalog
+    networks:
+      - frontend
 
   kafka1:
     image: confluentinc/cp-kafka:5.2.1
@@ -32,10 +34,15 @@ services:
       - ./data/kafka1/data:/var/lib/kafka/data
     depends_on:
       - zoo1
+    networks:
+      - frontend
 
   rproxy:
     hostname: rproxy
     image: mattes/rotating-proxy
+    deploy:
+      placement:
+        constraints: [node.role == worker]
     environment:
       - tors=25
     logging:
@@ -43,6 +50,8 @@ services:
     ports:
       - "5566:5566"
       - "4444:4444"
+    networks:
+      - frontend
 
   mongo:
     hostname: mongo
@@ -55,7 +64,7 @@ services:
       - ./data/mongo:/data/db
 
   producer:
-    image: producer
+    image: adrz/producer
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
@@ -69,17 +78,23 @@ services:
     volumes:
       - ./data/audios:/app/audios
       - ./producer:/app
+    deploy:
+      replicas: 2
     depends_on:
       - kafka1
+    links:
+      - kafka1
+    networks:
+      - frontend
 
   orchestrator:
-    image: orchestrator
+    image: adrz/orchestrator
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
       TOPIC_SUB: streams
     ports:
-      - "8080:5000"
+      - "8082:5000"
     build:
       context: ./producers_orchestrator
     entrypoint:
@@ -87,9 +102,13 @@ services:
       - app.py
     depends_on:
       - kafka1
+    links:
+      - kafka1
+    networks:
+      - frontend
 
   consumer:
-    image: consumer
+    image: adrz/consumer
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
@@ -108,7 +127,19 @@ services:
     entrypoint:
       - python
       - main.py
+    deploy:
+      replicas: 3
     depends_on:
       - kafka1
       - mongo
       - rproxy
+    links:
+      - kafka1
+      - mongo
+      - rproxy
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    driver: overlay
