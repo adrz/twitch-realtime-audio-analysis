@@ -4,9 +4,11 @@ from flask import Blueprint
 from flask import jsonify
 from .orchestrator import ProducersOrchestrator
 from .transcript_influx import TranscriptGetter
+from flask_cors import CORS
 
 
 api_blueprint = Blueprint('streams', __name__)
+CORS(api_blueprint)
 orchestrator = ProducersOrchestrator()
 
 transcript = TranscriptGetter()

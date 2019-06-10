@@ -1,4 +1,4 @@
-version: '2.1'
+version: '3'
 
 services:
   zoo1:
@@ -13,6 +13,8 @@ services:
     volumes:
       - ./data/zoo1/data:/data
       - ./data/zoo1/datalog:/datalog
+    networks:
+      - frontend
 
   kafka1:
     image: confluentinc/cp-kafka:5.2.1
@@ -25,16 +27,22 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
       KAFKA_BROKER_ID: 1
+      KAFKA_NUM_PARTITIONS: 6
       KAFKA_LOG4J_LOGGERS: "kafka.controller=WARN,kafka.producer.async.DefaultEventHandler=WARN,state.change.logger=WARN"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     volumes:
       - ./data/kafka1/data:/var/lib/kafka/data
     depends_on:
       - zoo1
+    networks:
+      - frontend
 
   # rproxy:
   #   hostname: rproxy
   #   image: mattes/rotating-proxy
+  #   deploy:
+  #     placement:
+  #       constraints: [node.role == worker]
   #   environment:
   #     - tors=25
   #   logging:
@@ -42,6 +50,8 @@ services:
   #   ports:
   #     - "5566:5566"
   #     - "4444:4444"
+  #   networks:
+  #     - frontend
 
   mongo:
     hostname: mongo
@@ -54,7 +64,7 @@ services:
       - ./data/mongo:/data/db
 
   producer:
-    image: producer
+    image: adrz/producer
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
@@ -68,11 +78,17 @@ services:
     volumes:
       - ./data/audios:/app/audios
       - ./producer:/app
+    deploy:
+      replicas: 2
     depends_on:
       - kafka1
+    links:
+      - kafka1
+    networks:
+      - frontend
 
   orchestrator:
-    image: orchestrator
+    image: adrz/orchestrator
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
@@ -92,9 +108,13 @@ services:
       - app.py
     depends_on:
       - kafka1
+    links:
+      - kafka1
+    networks:
+      - frontend
 
   consumer:
-    image: consumer
+    image: adrz/consumer
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
@@ -119,10 +139,17 @@ services:
     entrypoint:
       - python
       - main.py
+    deploy:
+      replicas: 3
     depends_on:
       - kafka1
       - mongo
-      # - rproxy
+    links:
+      - kafka1
+      - mongo
+      - rproxy
+    networks:
+      - frontend
 
   influxdb:
     image: influxdb:latest
@@ -134,3 +161,7 @@ services:
     ports:
       - "8086:8086"
       - "8082:8082"
+
+networks:
+  frontend:
+    driver: overlay
