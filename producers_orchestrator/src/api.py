@@ -3,10 +3,13 @@
 from flask import Blueprint
 from flask import jsonify
 from .orchestrator import ProducersOrchestrator
+from .transcript_influx import TranscriptGetter
 
 
 api_blueprint = Blueprint('streams', __name__)
 orchestrator = ProducersOrchestrator()
+
+transcript = TranscriptGetter()
 
 
 @api_blueprint.route('/get_streams')
@@ -25,3 +28,9 @@ def add_stream(name: str):
 def rm_stream(name: str):
     orchestrator.delete(name)
     return jsonify({'removed': name})
+
+
+@api_blueprint.route('/transcript/<name>')
+def get_transcript(name: str):
+    return jsonify(
+        transcript.get_transcript(name))

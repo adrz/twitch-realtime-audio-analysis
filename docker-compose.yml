@@ -32,16 +32,16 @@ services:
     depends_on:
       - zoo1
 
-  rproxy:
-    hostname: rproxy
-    image: mattes/rotating-proxy
-    environment:
-      - tors=25
-    logging:
-      driver: none
-    ports:
-      - "5566:5566"
-      - "4444:4444"
+  # rproxy:
+  #   hostname: rproxy
+  #   image: mattes/rotating-proxy
+  #   environment:
+  #     - tors=25
+  #   logging:
+  #     driver: none
+  #   ports:
+  #     - "5566:5566"
+  #     - "4444:4444"
 
   mongo:
     hostname: mongo
@@ -77,6 +77,12 @@ services:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
       TOPIC_SUB: streams
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_USER: root
+      INFLUXDB_PASS: root
+      INFLUXDB_DB: twitch
+      INFLUXDB_MEASUREMENT: twitch_transcript
     ports:
       - "8080:5000"
     build:
@@ -98,6 +104,12 @@ services:
       MONGODB_DB: twitch
       MONGODB_COLLECTION: speech2text
       N_THREADS: 10
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_USER: root
+      INFLUXDB_PASS: root
+      INFLUXDB_DB: twitch
+      INFLUXDB_MEASUREMENT: twitch_transcript
     build:
       context: ./consumer
     volumes:
@@ -110,4 +122,15 @@ services:
     depends_on:
       - kafka1
       - mongo
-      - rproxy
+      # - rproxy
+
+  influxdb:
+    image: influxdb:latest
+    hostname: influxdb
+    volumes:
+      - ./data/influxdb:/var/lib/influxdb
+      - ./data/influxdb/config:/etc/influxdb
+      - ./data/influxdbroot/:/root/.influxdb
+    ports:
+      - "8086:8086"
+      - "8082:8082"

@@ -8,6 +8,9 @@ import random
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+import datetime
+
+from influxdb import InfluxDBClient
 
 import requests
 from fake_useragent import UserAgent
@@ -27,6 +30,13 @@ MONGODB_DB = os.environ.get('MONGODB_DB')
 MONGODB_COLLECTION = os.environ.get('MONGODB_COLLECTION')
 PROXY = os.environ.get('PROXY')
 N_THREADS = int(os.environ.get('N_THREADS'))
+INFLUXDB_HOST = os.environ.get('INFLUXDB_HOST') or 'localhost'
+INFLUXDB_PORT = os.environ.get('INFLUXDB_PORT') or '8086'
+INFLUXDB_USER = os.environ.get('INFLUXDB_USER') or 'root'
+INFLUXDB_PASS = os.environ.get('INFLUXDB_PASS') or 'root'
+INFLUXDB_DB = os.environ.get('INFLUXDB_DB') or 'twitch'
+INFLUXDB_MEASUREMENT = os.environ.get('INFLUXDB_MEASUREMENT') or 'twitch_transcript'
+
 
 # profanity words list
 curses_words = get_curses('src/curses.txt')
@@ -66,6 +76,22 @@ class Reader():
                 self.logger.error("Unable to find a broker: {0}".format(err))
                 time.sleep(1)
 
+        # InfluxDB
+        while not hasattr(self, 'influx_client'):
+            self.logger.info('Getting influxdb client')
+            try:
+                self.influx_client = InfluxDBClient(
+                    INFLUXDB_HOST, int(INFLUXDB_PORT),
+                    INFLUXDB_USER, INFLUXDB_PASS,
+                    INFLUXDB_DB)
+                time.sleep(1)
+                has_db = any([x['name'] == INFLUXDB_DB
+                              for x in self.influx_client.get_list_database()])
+                if not has_db:
+                    self.influx_client.create_database(INFLUXDB_DB)
+            except:
+                self.logger.error('Unable to find influxdb')
+                time.sleep(1)
         self.logger.info("We have a consumer {0}".format(time.time()))
         self.logger.info("ok {0}".format(time.time()))
 
@@ -117,7 +143,7 @@ class Reader():
         data = msg.value
         proxies = {'http': PROXY,
                    'https': PROXY}
-        # proxies = None
+        proxies = None
 
         if len(data) == 0:
             return
@@ -174,15 +200,29 @@ class Reader():
 
         # save to mongo
         if transcript is not None:
-            dict_mongo = {'timestamp': msg.timestamp,
-                          'transcript': transcript,
-                          'streamer_name': msg.key.decode('utf-8'),
-                          'filename': filename if has_curse else None}
+            # dict_mongo = {'timestamp': msg.timestamp,
+            #               'transcript': transcript,
+            #               'streamer_name': msg.key.decode('utf-8'),
+            #               'filename': filename if has_curse else None}
+            # try:
+            #     with MongoClient(MONGODB_HOST) as client:
+            #         db = client[MONGODB_DB]
+            #         collection = db[MONGODB_COLLECTION]
+            #         collection.insert_one(dict_mongo)
+            # except Exception as inst:
+            #     self.logger.error('ERROR mongo', exc_info=True)
+            d = datetime.datetime.utcfromtimestamp(msg.timestamp/1000)
+            json_body = [{
+                'measurement': INFLUXDB_MEASUREMENT,
+                'time': msg.timestamp,
+                'fields': {
+                    'transcript': transcript,
+                    'streamer_name': msg.key.decode('utf-8'),
+                    'filename': filename if has_curse else None}
+                }]
             try:
-                with MongoClient(MONGODB_HOST) as client:
-                    db = client[MONGODB_DB]
-                    collection = db[MONGODB_COLLECTION]
-                    collection.insert_one(dict_mongo)
+                self.influx_client.write_points(json_body, time_precision='ms')
+                self.logger.info('saving into influx: {}'.format(json_body))
             except Exception as inst:
-                self.logger.error('ERROR mongo', exc_info=True)
+                self.logger.error('Error influxdb: {}'.format(inst))
         return 

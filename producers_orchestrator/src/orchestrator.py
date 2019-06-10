@@ -93,6 +93,7 @@ class ProducersOrchestrator():
             topic=TOPIC_SUB,
             key=chillest_producer,
             data=json.dumps(data).encode('utf-8'))
+        self.producers[chillest_producer].append(streamer_name)
 
     def add_random(self, streamer_name: str):
         """
