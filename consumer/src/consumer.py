@@ -143,7 +143,7 @@ class Reader():
         data = msg.value
         proxies = {'http': PROXY,
                    'https': PROXY}
-        proxies = None
+        # proxies = None
 
         if len(data) == 0:
             return

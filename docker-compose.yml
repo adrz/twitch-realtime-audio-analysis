@@ -1,4 +1,4 @@
-version: '3'
+version: '3.1'
 
 services:
   zoo1:
@@ -13,8 +13,8 @@ services:
     volumes:
       - ./data/zoo1/data:/data
       - ./data/zoo1/datalog:/datalog
-    # networks:
-    #   - frontend
+    networks:
+      - frontend
 
   kafka1:
     image: confluentinc/cp-kafka:5.2.1
@@ -34,24 +34,24 @@ services:
       - ./data/kafka1/data:/var/lib/kafka/data
     depends_on:
       - zoo1
-    # networks:
-    #   - frontend
+    networks:
+      - frontend
 
-  # rproxy:
-  #   hostname: rproxy
-  #   image: mattes/rotating-proxy
-  #   deploy:
-  #     placement:
-  #       constraints: [node.role == worker]
-  #   environment:
-  #     - tors=25
-  #   logging:
-  #     driver: none
-  #   ports:
-  #     - "5566:5566"
-  #     - "4444:4444"
-  #   networks:
-  #     - frontend
+  rproxy:
+    hostname: rproxy
+    image: mattes/rotating-proxy
+    deploy:
+      placement:
+        constraints: [node.role == worker]
+    environment:
+      - tors=25
+    logging:
+      driver: none
+    ports:
+      - "5566:5566"
+      - "4444:4444"
+    networks:
+      - frontend
 
   mongo:
     hostname: mongo
@@ -78,14 +78,14 @@ services:
     volumes:
       - ./data/audios:/app/audios
       - ./producer:/app
-    # deploy:
-    #   replicas: 2
+    deploy:
+      replicas: 2
     depends_on:
       - kafka1
     links:
       - kafka1
-    # networks:
-    #   - frontend
+    networks:
+      - frontend
 
   orchestrator:
     image: adrz/orchestrator
@@ -111,8 +111,8 @@ services:
       - influxdb
     links:
       - kafka1
-    # networks:
-    #   - frontend
+    networks:
+      - frontend
 
   consumer:
     image: adrz/consumer
@@ -140,8 +140,8 @@ services:
     entrypoint:
       - python
       - main.py
-    # deploy:
-    #   replicas: 3
+    deploy:
+      replicas: 3
     depends_on:
       - kafka1
       - mongo
@@ -150,8 +150,8 @@ services:
       - mongo
       - influxdb
       # - rproxy
-    # networks:
-    #   - frontend
+    networks:
+      - frontend
 
   influxdb:
     image: influxdb:latest
@@ -163,7 +163,10 @@ services:
     ports:
       - "8086:8086"
       - "8082:8082"
+    networks:
+      - frontend
 
-# networks:
-#   frontend:
-#     driver: overlay
+
+networks:
+  frontend:
+    driver: overlay
