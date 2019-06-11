@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import logging
 import os
 import signal
@@ -14,11 +12,12 @@ from pydub.exceptions import CouldntEncodeError
 
 from .publisher import Publisher
 
+TOPIC = os.environ.get('TOPIC') or 'twitch'
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 if len(logger.handlers) == 0:
     logger.addHandler(logging.StreamHandler())
-
 
 class AudioStreamer:
     def __init__(self, twitch_url: str, sampling_rate: int=16000,
@@ -92,6 +91,7 @@ class AudioStreamer:
     def update_buffer(self):
         while True:
             if not self.is_running:
+                self.dispatcher.push(topic='streams', data=self.streamer_name)
                 self.pipe.terminate()
                 self.pipe.communicate()
                 return
@@ -124,4 +124,4 @@ class AudioStreamer:
             raw_wav.export(raw_flac, format='flac')
             t = time.time()
             data = raw_flac.read()
-            self.dispatcher.push(key=self.streamer_name, audio=data)
+            self.dispatcher.push(topic=TOPIC, key=self.streamer_name, data=data)

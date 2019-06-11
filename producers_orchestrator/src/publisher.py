@@ -27,7 +27,7 @@ class Publisher:
                 self.logger.error("Unable to find a broker: {0}".format(err))
                 time.sleep(1)
 
-    def push(self, topic, key=None, data=None):
+    def push(self, topic, key=None, data=b''):
         try:
             if self.producer:
                 if key is not None:

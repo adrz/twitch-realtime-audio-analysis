@@ -1,4 +1,4 @@
-version: '2.1'
+version: '3'
 
 services:
   zoo1:
@@ -13,6 +13,8 @@ services:
     volumes:
       - ./data/zoo1/data:/data
       - ./data/zoo1/datalog:/datalog
+    # networks:
+    #   - frontend
 
   kafka1:
     image: confluentinc/cp-kafka:5.2.1
@@ -32,17 +34,24 @@ services:
       - ./data/kafka1/data:/var/lib/kafka/data
     depends_on:
       - zoo1
+    # networks:
+    #   - frontend
 
-  rproxy:
-    hostname: rproxy
-    image: mattes/rotating-proxy
-    environment:
-      - tors=25
-    logging:
-      driver: none
-    ports:
-      - "5566:5566"
-      - "4444:4444"
+  # rproxy:
+  #   hostname: rproxy
+  #   image: mattes/rotating-proxy
+  #   deploy:
+  #     placement:
+  #       constraints: [node.role == worker]
+  #   environment:
+  #     - tors=25
+  #   logging:
+  #     driver: none
+  #   ports:
+  #     - "5566:5566"
+  #     - "4444:4444"
+  #   networks:
+  #     - frontend
 
   mongo:
     hostname: mongo
@@ -55,13 +64,12 @@ services:
       - ./data/mongo:/data/db
 
   producer:
-    image: producer
+    image: adrz/producer
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
-      TOPIC: 'twitch'
-    ports:
-      - "8080:5000"
+      TOPIC: twitch
+      TOPIC_SUB: streams
     build:
       context: ./producer
     entrypoint:
@@ -70,11 +78,44 @@ services:
     volumes:
       - ./data/audios:/app/audios
       - ./producer:/app
+    # deploy:
+    #   replicas: 2
     depends_on:
       - kafka1
+    links:
+      - kafka1
+    # networks:
+    #   - frontend
+
+  orchestrator:
+    image: adrz/orchestrator
+    environment:
+      IP_KAFKA: kafka1
+      PORT_KAFKA: 19092
+      TOPIC_SUB: streams
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_USER: root
+      INFLUXDB_PASS: root
+      INFLUXDB_DB: twitch
+      INFLUXDB_MEASUREMENT: twitch_transcript
+    ports:
+      - "8080:5000"
+    build:
+      context: ./producers_orchestrator
+    entrypoint:
+      - python
+      - app.py
+    depends_on:
+      - kafka1
+      - influxdb
+    links:
+      - kafka1
+    # networks:
+    #   - frontend
 
   consumer:
-    image: consumer
+    image: adrz/consumer
     environment:
       IP_KAFKA: kafka1
       PORT_KAFKA: 19092
@@ -84,6 +125,12 @@ services:
       MONGODB_DB: twitch
       MONGODB_COLLECTION: speech2text
       N_THREADS: 10
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_USER: root
+      INFLUXDB_PASS: root
+      INFLUXDB_DB: twitch
+      INFLUXDB_MEASUREMENT: twitch_transcript
     build:
       context: ./consumer
     volumes:
@@ -93,7 +140,30 @@ services:
     entrypoint:
       - python
       - main.py
+    # deploy:
+    #   replicas: 3
     depends_on:
       - kafka1
       - mongo
-      - rproxy
+    links:
+      - kafka1
+      - mongo
+      - influxdb
+      # - rproxy
+    # networks:
+    #   - frontend
+
+  influxdb:
+    image: influxdb:latest
+    hostname: influxdb
+    volumes:
+      - ./data/influxdb:/var/lib/influxdb
+      - ./data/influxdb/config:/etc/influxdb
+      - ./data/influxdbroot/:/root/.influxdb
+    ports:
+      - "8086:8086"
+      - "8082:8082"
+
+# networks:
+#   frontend:
+#     driver: overlay
