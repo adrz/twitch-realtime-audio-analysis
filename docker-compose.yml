@@ -37,21 +37,21 @@ services:
     networks:
       - frontend
 
-  # rproxy:
-  #   hostname: rproxy
-  #   image: mattes/rotating-proxy
-  #   deploy:
-  #     placement:
-  #       constraints: [node.role == worker]
-  #   environment:
-  #     - tors=25
-  #   logging:
-  #     driver: none
-  #   ports:
-  #     - "5566:5566"
-  #     - "4444:4444"
-  #   networks:
-  #     - frontend
+  rproxy:
+    hostname: rproxy
+    image: mattes/rotating-proxy
+    deploy:
+      placement:
+        constraints: [node.role == worker]
+    environment:
+      - tors=25
+    logging:
+      driver: none
+    ports:
+      - "5566:5566"
+      - "4444:4444"
+    networks:
+      - frontend
 
   # mongo:
   #   hostname: mongo

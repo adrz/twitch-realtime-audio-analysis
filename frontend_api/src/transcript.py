@@ -45,10 +45,10 @@ class TranscriptGetter(object):
                     frequency: str, field='n_words') -> list:
         query = ('SELECT sum({field}) from {measurement} '
                  'WHERE time > now()-{duration} '
-                 'GROUP BY time({frequency});').format(measurement=INFLUXDB_MEASUREMENT,
-                                                       duration=duration,
-                                                       frequency=frequency,
-                                                       field=field)
+                 'GROUP BY time({frequency}) fill(none);').format(measurement=INFLUXDB_MEASUREMENT,
+                                                                  duration=duration,
+                                                                  frequency=frequency,
+                                                                  field=field)
         logger.info(query)
         rs = self.influx_client.query(query)
         return list(rs)
