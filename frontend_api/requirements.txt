@@ -4,6 +4,7 @@ certifi==2019.3.9
 chardet==3.0.4
 Click==7.0
 Flask==1.0.3
+Flask-Cors==3.0.8
 flask-restplus==0.12.1
 gunicorn==19.9.0
 idna==2.8
