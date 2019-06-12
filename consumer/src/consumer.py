@@ -143,7 +143,7 @@ class Reader():
         data = msg.value
         proxies = {'http': PROXY,
                    'https': PROXY}
-        # proxies = None
+        proxies = None
 
         if len(data) == 0:
             return
@@ -218,6 +218,8 @@ class Reader():
                 'fields': {
                     'transcript': transcript,
                     'streamer_name': msg.key.decode('utf-8'),
+                    'has_curse': 1 if has_curse else 0,
+                    'n_words': len(transcript.split(' ')),
                     'filename': filename if has_curse else None}
                 }]
             try:

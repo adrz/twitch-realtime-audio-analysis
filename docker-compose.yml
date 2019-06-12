@@ -37,31 +37,31 @@ services:
     networks:
       - frontend
 
-  rproxy:
-    hostname: rproxy
-    image: mattes/rotating-proxy
-    deploy:
-      placement:
-        constraints: [node.role == worker]
-    environment:
-      - tors=25
-    logging:
-      driver: none
-    ports:
-      - "5566:5566"
-      - "4444:4444"
-    networks:
-      - frontend
+  # rproxy:
+  #   hostname: rproxy
+  #   image: mattes/rotating-proxy
+  #   deploy:
+  #     placement:
+  #       constraints: [node.role == worker]
+  #   environment:
+  #     - tors=25
+  #   logging:
+  #     driver: none
+  #   ports:
+  #     - "5566:5566"
+  #     - "4444:4444"
+  #   networks:
+  #     - frontend
 
-  mongo:
-    hostname: mongo
-    image: mongo
-    logging:
-      driver: none
-    ports:
-      - "27018:27017"
-    volumes:
-      - ./data/mongo:/data/db
+  # mongo:
+  #   hostname: mongo
+  #   image: mongo
+  #   logging:
+  #     driver: none
+  #   ports:
+  #     - "27018:27017"
+  #   volumes:
+  #     - ./data/mongo:/data/db
 
   producer:
     image: adrz/producer
@@ -78,8 +78,8 @@ services:
     volumes:
       - ./data/audios:/app/audios
       - ./producer:/app
-    deploy:
-      replicas: 2
+    # deploy:
+    #   replicas: 2
     depends_on:
       - kafka1
     links:
@@ -121,9 +121,9 @@ services:
       PORT_KAFKA: 19092
       TOPIC: twitch
       PROXY: rproxy:5566
-      MONGODB_HOST: mongo:27017
-      MONGODB_DB: twitch
-      MONGODB_COLLECTION: speech2text
+      # MONGODB_HOST: mongo:27017
+      # MONGODB_DB: twitch
+      # MONGODB_COLLECTION: speech2text
       N_THREADS: 10
       INFLUXDB_HOST: influxdb
       INFLUXDB_PORT: 8086
@@ -140,14 +140,12 @@ services:
     entrypoint:
       - python
       - main.py
-    deploy:
-      replicas: 3
+    # deploy:
+    #   replicas: 3
     depends_on:
       - kafka1
-      - mongo
     links:
       - kafka1
-      - mongo
       - influxdb
       # - rproxy
     networks:
@@ -166,7 +164,23 @@ services:
     networks:
       - frontend
 
+  frontend-api:
+    image: adrz/frontend-api
+    build:
+      context: ./frontend_api
+    environment:
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_USER: root
+      INFLUXDB_PASS: root
+      INFLUXDB_DB: twitch
+      INFLUXDB_MEASUREMENT: twitch_transcript
+    ports:
+      - "8283:8283"
+    networks:
+      - frontend
+
 
 networks:
   frontend:
-    driver: overlay
+    # driver: overlay
