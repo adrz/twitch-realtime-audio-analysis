@@ -98,7 +98,7 @@ class Transcript(Resource):
         data = transcript_getter.get_transcript(args['streamer_name'],
                                                 args['duration'])
         logger.info(data)
-        return data, 200
+        return data, 200, {'Access-Control-Allow-Origin': '*'}
 
 
 @api.route('/count_words')
@@ -115,7 +115,7 @@ class Words(Resource):
                                              args['duration'],
                                              args['frequency'],
                                              'n_words')
-        return data, 200
+        return data, 200, {'Access-Control-Allow-Origin': '*'}
 
 
 @api.route('/count_swears')
@@ -132,4 +132,4 @@ class Swears(Resource):
                                              args['duration'],
                                              args['frequency'],
                                              'has_curse')
-        return data, 200
+        return data, 200, {'Access-Control-Allow-Origin': '*'}
