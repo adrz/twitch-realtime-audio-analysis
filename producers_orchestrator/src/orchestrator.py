@@ -63,7 +63,7 @@ class ProducersOrchestrator():
                 key='broadcast')
 
             # Allow then to answer in 5 seconds
-            time.sleep(5)
+            time.sleep(.2)
             raw_messages = self.subscriber.poll(timeout_ms=1000)
 
             self.producers = {}
@@ -75,7 +75,25 @@ class ProducersOrchestrator():
                             msg.value.decode('utf-8'))
                         key, value = data['uuid'], data['streamers']
                         self.producers[key] = value
-            time.sleep(5)
+            time.sleep(1)
+
+    def delete(self, streamer_name: str):
+        """
+        Remove a stream from producers
+        """
+
+        data = {'del': streamer_name}
+        uuid_producer = None
+        for k, v in self.producers.items():
+            if streamer_name in v:
+                uuid_producer = k
+                break
+        if uuid_producer is not None:
+            self.dispatcher.push(
+                topic=TOPIC_SUB,
+                key=uuid_producer,
+                data=json.dumps(data).encode('utf-8'))
+
 
     def add(self, streamer_name: str):
         """
