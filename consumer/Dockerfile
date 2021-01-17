@@ -1,5 +1,5 @@
-FROM frolvlad/alpine-python3:latest
-
+#FROM frolvlad/alpine-python3:latest
+FROM python:3.8-alpine
 WORKDIR /app
 COPY requirements.txt main.py ./
 COPY src src

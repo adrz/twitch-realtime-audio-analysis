@@ -1,5 +1,5 @@
-FROM frolvlad/alpine-python3:latest
-
+#FROM frolvlad/alpine-python3:latest
+FROM python:3.8-alpine
 RUN apk upgrade -U \
  && apk add ca-certificates ffmpeg libva-intel-driver gcc musl-dev \
  && rm -rf /var/cache/*
