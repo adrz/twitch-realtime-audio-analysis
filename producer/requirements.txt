@@ -7,7 +7,7 @@ iso-639==0.4.5
 iso3166==1.0.1
 isodate==0.6.0
 itsdangerous==1.1.0
-Jinja2==2.11.2
+Jinja2==2.11.3
 kafka-python==2.0.2
 MarkupSafe==1.1.1
 pycryptodome==3.9.9
