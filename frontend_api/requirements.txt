@@ -10,7 +10,7 @@ gunicorn==19.9.0
 idna==2.8
 influxdb==5.2.2
 itsdangerous==1.1.0
-Jinja2==2.10.1
+Jinja2==2.11.3
 jsonschema==3.0.1
 MarkupSafe==1.1.1
 pyrsistent==0.15.2
